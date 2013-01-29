@@ -1,5 +1,30 @@
 Revision history for Perl extension Carp::Notify.
 
+1.11  <TBD>
+        - Maintainership changed to Brian Conry
+        - Updates to documentation, tests, and whitespace
+
+1.10  Fri Apr 13 2001
+        - Long overdue re-write/enhancements.
+        - Cleaned up the internals.
+        - Added support for different log files for notifys/explodes.
+        - Added support for changing all the defaults externally.
+        - Improved today() function with Mail::Bulkmail's date generation.
+        - Added death_function to call upon dying instead of death_message.
+        - Added error_function to help handle unforeseen problems.
+        - Perl 5.6's 'caller' function returns an extra two fields of
+          information.  Jeff Boes pointed this out and extra-helpfully
+          provided a patch for it as well.
+        - Added the ability to config the SMTP port.  I was just being lazy
+          in v1.00.  :*)
+
+1.00  Thu Aug 10 2000
+        - Changed the name from Explode to Carp::Notify.  It's more
+          descriptive and I don't create a new namespace.
+
+1.00-FC1  Fri Jun 09 2000
+        - First publically available version.
+
 0.01  Thu Apr 12 14:59:17 2001
-	- original version; created by h2xs 1.19
+        - original version; created by h2xs 1.19
 
