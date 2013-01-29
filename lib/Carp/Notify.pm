@@ -1,11 +1,6 @@
 package Carp::Notify;
 
-# Copyright (c) 2000, 2001 James A Thomason III (thomasoniii@yahoo.com). All rights reserved.
-# Copyright (c) 2013, Brian Conry (perl@theconrys.com). All rights reserved.
-# This program is free software; you can redistribute it and/or
-# modify it under the same terms as Perl itself.
-
-$VERSION = "1.10";
+# ABSTRACT: Loudly complain in lots of places when things break badly
 
 use 5.005; # probably lower, but I haven't tested it below 005
 use strict;
@@ -415,16 +410,6 @@ __END__
 
 =pod
 
-=head1 NAME
-
-Carp::Notify - Loudly complain in lots of places when things break badly
-
-=head1 AUTHOR
-
-Jim Thomason thomasoniii@yahoo.com
-
-Brian Conry perl@theconrys.com
-
 =head1 SYNOPSIS
 
 Use it in place of die or croak, or warn or carp.
@@ -440,10 +425,6 @@ Use it in place of die or croak, or warn or carp.
  if (something_a_little_bad) {notify("Oh no, a minor error!")};
  if ($something_bad) { explode ("Oh no an error!")};
 
-=head1 REQUIRES
-
-Perl 5.005, Socket (for emailing)
-
 =head1 DESCRIPTION
 
 Carp::Notify is an error reporting module designed for applications that are running unsupervised (a CGI script, for example,
@@ -454,6 +435,10 @@ there, for example), then you can have it notify you of the error but not termin
 
 Defaults are set up within the module, but they can be overridden once the module is used, or as individual explosions take place.
 B<Please> set up your appropriate defaults in the module.  It'll save you headaches later.
+
+=head1 REQUIRES
+
+Perl 5.005, Socket (for emailing)
 
 =head1 BUILT IN STUFF
 
@@ -921,7 +906,6 @@ Why yes, yes it was.
  # notify someone of a problem, but keep the program running
  notify ("Ye gods!  A little error!");
 
-
 =head1 Version History
 
 =over 11
@@ -951,17 +935,4 @@ v1.00 - August 10, 2000 - Changed the name from Explode to Carp::Notify.  It's m
 
 v1.00 FC1 - June 9, 2000 - First publically available version.
 
-=head1 COPYRIGHT (again)
-
-Copyright (c) 2000, 2001 James A Thomason III (thomasoniii@yahoo.com). All rights reserved.
-This program is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
-
-=head1 CONTACT INFO
-
-So you don't have to scroll all the way back to the top, I'm Jim Thomason (thomasoniii@yahoo.com) and feedback is appreciated.
-Bug reports/suggestions/questions/etc.  Hell, drop me a line to let me know that you're using the module and that it's
-made your life easier.  :-)
-
 =cut
-
