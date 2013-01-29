@@ -1,6 +1,6 @@
 #########################
 
-use Test::More tests => 59;
+use Test::More tests => 65;
 
 #########################
 
@@ -40,7 +40,6 @@ use Test::More tests => 59;
 
 # exports even if passed nothing, e.g. qw()
 # this contrary to normal conventions, but is the original module behaviour
-# consider making these tests pass on TODO as a step towards correcting the bad behavior
 {
     package t::Carp::Notify::b;
 
@@ -50,6 +49,18 @@ use Test::More tests => 59;
     delete $symtable{BEGIN};
     delete $symtable{TODO};
 
+    # this shows what the module should be doing
+    TODO: {
+        local $TODO = 'preserving backwards compatibility... for now';
+
+        ::is_deeply(
+            \%symtable,
+            {},
+            '...::b symbol table (as it should be)',
+        );
+    }
+
+    # the following tests show what it's historically done
     ::is_deeply(
         \%symtable,
         {
@@ -84,6 +95,20 @@ use Test::More tests => 59;
     delete $symtable{BEGIN};
     delete $symtable{TODO};
 
+    # this shows what the module should be doing
+    TODO: {
+        local $TODO = 'preserving backwards compatibility... for now';
+
+        ::is_deeply(
+            \%symtable,
+            {
+                'croak' => *t::Carp::Notify::c::croak,
+            },
+            '...::c symbol table (as it should be)',
+        );
+    }
+
+    # tests demonstrating backwards compatibility with broken behavior
     ::is_deeply(
         \%symtable,
         {
@@ -106,6 +131,8 @@ use Test::More tests => 59;
         \&Carp::Notify::notify,
         '...::c notify came from where we expect',
     );
+
+    # this test will remain
     ::cmp_ok(
         \&t::Carp::Notify::c::croak,
         '==',
@@ -122,6 +149,20 @@ use Test::More tests => 59;
     delete $symtable{BEGIN};
     delete $symtable{TODO};
 
+    # this shows what the module should be doing
+    TODO: {
+        local $TODO = 'preserving backwards compatibility... for now';
+
+        ::is_deeply(
+            \%symtable,
+            {
+                'carp' => *t::Carp::Notify::d::carp,
+            },
+            '...::d symbol table (as it should be)',
+        );
+    }
+
+    # tests demonstrating backwards compatibility with broken behavior
     ::is_deeply(
         \%symtable,
         {
@@ -144,6 +185,8 @@ use Test::More tests => 59;
         \&Carp::Notify::notify,
         '...::d notify came from where we expect',
     );
+
+    # this test will remain
     ::cmp_ok(
         \&t::Carp::Notify::d::carp,
         '==',
@@ -160,6 +203,20 @@ use Test::More tests => 59;
     delete $symtable{BEGIN};
     delete $symtable{TODO};
 
+    # this shows what the module should be doing
+    TODO: {
+        local $TODO = 'preserving backwards compatibility... for now';
+
+        ::is_deeply(
+            \%symtable,
+            {
+                make_storable => *t::Carp::Notify::e::make_storable,
+            },
+            '...::e symbol table (as it should be)',
+        );
+    }
+
+    # tests demonstrating backwards compatibility with broken behavior
     ::is_deeply(
         \%symtable,
         {
@@ -182,6 +239,8 @@ use Test::More tests => 59;
         \&Carp::Notify::notify,
         '...::e notify came from where we expect',
     );
+
+    # this test will remain
     ::cmp_ok(
         \&t::Carp::Notify::e::make_storable,
         '==',
@@ -198,6 +257,20 @@ use Test::More tests => 59;
     delete $symtable{BEGIN};
     delete $symtable{TODO};
 
+    # this shows what the module should be doing
+    TODO: {
+        local $TODO = 'preserving backwards compatibility... for now';
+
+        ::is_deeply(
+            \%symtable,
+            {
+                make_unstorable => *t::Carp::Notify::f::make_unstorable,
+            },
+            '...::f symbol table (as it should be)',
+        );
+    }
+
+    # tests demonstrating backwards compatibility with broken behavior
     ::is_deeply(
         \%symtable,
         {
@@ -220,6 +293,8 @@ use Test::More tests => 59;
         \&Carp::Notify::notify,
         '...::f notify came from where we expect',
     );
+
+    # this test will remain
     ::cmp_ok(
         \&t::Carp::Notify::f::make_unstorable,
         '==',
@@ -236,6 +311,23 @@ use Test::More tests => 59;
     delete $symtable{BEGIN};
     delete $symtable{TODO};
 
+    # this shows what the module should be doing
+    TODO: {
+        local $TODO = 'preserving backwards compatibility... for now';
+
+        ::is_deeply(
+            \%symtable,
+            {
+                'croak' => *t::Carp::Notify::g::croak,
+                'carp' => *t::Carp::Notify::g::carp,
+                make_storable => *t::Carp::Notify::e::make_storable,
+                make_unstorable => *t::Carp::Notify::g::make_unstorable,
+            },
+            '...::g symbol table (as it should be)',
+        );
+    }
+
+    # tests demonstrating backwards compatibility with broken behavior
     ::is_deeply(
         \%symtable,
         {
@@ -261,6 +353,8 @@ use Test::More tests => 59;
         \&Carp::Notify::notify,
         '...::g notify came from where we expect',
     );
+
+    # these tests will remain
     ::cmp_ok(
         \&t::Carp::Notify::g::croak,
         '==',
@@ -303,24 +397,14 @@ use Test::More tests => 59;
         $var_1
         @var_1
         %var_1
-        $var_2
-        @var_2
-        %var_2
     );
 
     $var_1 = 'contents of $var_1';
     @var_1 = qw(contents of @var_1);
     %var_1 = ( contents => 'of', '%var_1' => 'value' );
-    $var_2 = 'contents of $var_2';
-    @var_2 = qw(contents of @var_2);
-    %var_2 = ( contents => 'of', '%var_2' => 'value' );
 
     sub func_1 {
         return 'func_1 return value';
-    }
-
-    sub func_2 {
-        return 'func_2 return value';
     }
 
     sub get_store_vars {
@@ -356,7 +440,8 @@ use Test::More tests => 59;
     );
 
     # store_vars modifies the list of "stored" variables to make them
-    # unsuitable for repeated calls to store_vars
+    # unsuitable for repeated calls to store_vars, this may be considered
+    # to be a bug in the future
     $store_return = get_store_vars();
 
     ::is( $store_return, '' );
