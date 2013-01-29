@@ -393,8 +393,6 @@ sub error {
     }
     elsif ($func){
         no strict 'refs';
-        my $calling_package = (caller(2))[0]; # eek!  This may bite me in the ass.
-
         my ($calling_package) = (caller)[0];
         my $package = $calling_package . "::";
         $package = $1 if $$func =~ s/(.+::)//;
@@ -504,6 +502,8 @@ Example:
 
 These are hash keys that allow you to override the Carp::Notify's module defaults.  These can also all be overloaded explicitly
 in your explode() calls, but this allows a global modification.
+
+=back
 
 =over 2
 
@@ -623,7 +623,7 @@ Flag that tells Carp::Notify whether or not to email a user to let them know som
 =item email
 
 Overrides the default email address.  This is whoever the error message will get emailed to
-if U<email_it> is true.
+if C<email_it> is true.
 
 =back
 
@@ -632,7 +632,7 @@ if U<email_it> is true.
 =item return
 
 Overrides the default return address.  This is whoever the error message will be coming from
-if U<email_it> is true.
+if C<email_it> is true.
 
 =back
 
@@ -641,7 +641,7 @@ if U<email_it> is true.
 =item subject
 
 Overrides the default subject.  This is the subject of the email message
-if U<email_it> is true.
+if C<email_it> is true.
 
 =back
 
@@ -757,6 +757,8 @@ be called with the same arguements that death_message would receive.  Its return
 
 =back
 
+=back
+
 =over 11
 
 =item make_storable
@@ -809,6 +811,8 @@ as you'd like to show up in your logs.
 
 notify is to explode as warn is to die.  It does everything exactly the same way, but it won't terminate your program the
 way that an explode would.
+
+=back
 
 =head1 FAQ
 
@@ -934,5 +938,7 @@ out and extra-helpfully provided a patch for it as well.
 v1.00 - August 10, 2000 - Changed the name from Explode to Carp::Notify.  It's more descriptive and I don't create a new namespace.
 
 v1.00 FC1 - June 9, 2000 - First publically available version.
+
+=back
 
 =cut
