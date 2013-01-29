@@ -1,51 +1,52 @@
 package Carp::Notify;
 
-#Copyright (c) 2000, 2001 James A Thomason III (thomasoniii@yahoo.com). All rights reserved.
-#This program is free software; you can redistribute it and/or
-#modify it under the same terms as Perl itself.
+# Copyright (c) 2000, 2001 James A Thomason III (thomasoniii@yahoo.com). All rights reserved.
+# Copyright (c) 2013, Brian Conry (perl@theconrys.com). All rights reserved.
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
 
 $VERSION = "1.10";
 
-use 5.005;	#probably lower, but I haven't tested it below 005
+use 5.005; # probably lower, but I haven't tested it below 005
 use strict;
 local $^W = 1;
 
 my %def = (
-	"smtp"			=> 'your.smtp.com',			#IMPORTANT!  Set this!  I mean it!
-	"domain"		=> 'smtp.com',				#IMPORTANT!  Set this!  I mean it!
-	"port"			=> 25,
-	
-	"email_it"		=> 1,						#should we email by default?	true/false
-	"email"			=> 'someone@your.smtp.com',	#who are we emailing by default?
-	"return"		=> 'someone@your.smtp.com',	#who is the error coming from?
-	"subject"		=> 'Ye Gods!  An error!',
-	
-	"log_it"		=> 1,						#should we log by default?
-	"log_file"		=> '/tmp/error.log',		#default error log for notifys and explodes
+    "smtp"   => 'your.smtp.com', # IMPORTANT!  Set this!  I mean it!
+    "domain" => 'smtp.com',      # IMPORTANT!  Set this!  I mean it!
+    "port"   => 25,
 
-	"log_explode"	=> 0,						#should we log explodes by default?
-	"explode_log"	=> '/tmp/explode.log',		#default error log for explodes ONLY
+    "email_it" => 1,                       # should we email by default? true/false
+    "email"    => 'someone@your.smtp.com', # who are we emailing by default?
+    "return"   => 'someone@your.smtp.com', # who is the error coming from?
+    "subject"  => 'Ye Gods!  An error!',
 
-	"log_notify"	=> 0,						#should we log notifys by default?
-	"notify_log"	=> '/tmp/notify.log',		#default error log for notifys ONLY
-	
-	"store_vars"	=> 1,						#should we store variables by default? true/false
-	"stack_trace"	=> 1,						#should we do a stack trace by default? true/false
-	"store_env"		=> 1,						#should we store our environment by default? true/false
-	
-	"die_to_stdout"	=> 0,						#should we send our death_message to STDOUT by default? true/false
-	"die_everywhere"=> 0,						#should we send our death_message to STDOUT and STDERR by default? true/false
-	"die_quietly"	=> 0,						#should we not print our death_message anywhere?  true/false
-	
-	"error_function"=> '',#'&main::error',		#function to call if Carp::Notify encounters an error
-	"death_function"=> '',#'&main::death',		#function to call upon termination, used in place of death_message
-	
-	#What would you like to die with?  This is probably the message that's going to your user in
-	#his browser, so make it something nice.  You'll have to set the content type yourself, though.
-	#Why's that, you ask?  I wanted to be sure that you had the option of easily redirecting to 
-	#a different page if you'd prefer.
+    "log_it"   => 1,                # should we log by default?
+    "log_file" => '/tmp/error.log', # default error log for notifys and explodes
 
-	"death_message"   => <<'eoE'
+    "log_explode" => 0,                  # should we log explodes by default?
+    "explode_log" => '/tmp/explode.log', # default error log for explodes ONLY
+
+    "log_notify" => 0,                 # should we log notifys by default?
+    "notify_log" => '/tmp/notify.log', # default error log for notifys ONLY
+
+    "store_vars"  => 1, # should we store variables by default? true/false
+    "stack_trace" => 1, # should we do a stack trace by default? true/false
+    "store_env"   => 1, # should we store our environment by default? true/false
+
+    "die_to_stdout"  => 0, # should we send our death_message to STDOUT by default? true/false
+    "die_everywhere" => 0, # should we send our death_message to STDOUT and STDERR by default? true/false
+    "die_quietly"    => 0, # should we not print our death_message anywhere?  true/false
+
+    "error_function" => '', # function to call if Carp::Notify encounters an error
+    "death_function" => '', # function to call upon termination, used in place of death_message
+
+    # What would you like to die with?  This is probably the message that's going to your user in
+    # his browser, so make it something nice.  You'll have to set the content type yourself, though.
+    # Why's that, you ask?  I wanted to be sure that you had the option of easily redirecting to
+    # a different page if you'd prefer.
+
+    "death_message"   => <<'eoE'
 Content-type:text/plain\n\n
 
 We're terribly sorry, but some horrid internal error seems to have occurred.  We are actively
@@ -53,378 +54,358 @@ looking into the problem and hope to repair the error shortly.  We're sorry for 
 
 eoE
 );
-#end defaults.  Don't mess with anything else! I mean it!
+# end defaults.  Don't mess with anything else! I mean it!
 
 my $settables = "(?:" . join('|', keys %def) . ')';
 
 BEGIN {
-	$Carp::Notify::can_email = 1;
-	eval "use Socket";
-	$Carp::Notify::can_email = 0 if $@;
-	
-	$Carp::Notify::fatal = 1;	#doesn't really belong here, but it's the cleanest place to put it...
+    $Carp::Notify::can_email = 1;
+    eval "use Socket";
+    $Carp::Notify::can_email = 0 if $@;
+
+    $Carp::Notify::fatal = 1; # doesn't really belong here, but it's the cleanest place to put it...
 };
 
 
 {
-	no strict 'refs';
-	my $calling_package = undef;
-	
-	my %storable_vars = ();
-	
-	my @storable_vars = ();
-	my %init = ();
-	
-	sub import {
-		my ($package, $file, $line) = caller;
-		$calling_package = $package;
-		
-		*{$package . "::explode"} = \&Carp::Notify::explode;
-		*{$package . "::notify"} = \&Carp::Notify::notify;
+    no strict 'refs';
+    my $calling_package = undef;
 
-		while (defined (my $var = shift)){
-			if ($var eq ""){die ("Error...tried to import undefined value in $file, Line $line\n")};
-			
-			if ($var =~ /^$settables$/o){
-				$def{$var} = shift;
-				next;
-			};
-			
-			push @storable_vars, $var if $var =~ /^[\$@%&]/;
-			push @{$storable_vars{$calling_package}}, $var if $var =~ /^[\$@%&]/;
-			
-			#see if we want to overload croak or export anything while we're at it.
-			
-			*{$package . "::croak"}   			= \&Carp::Notify::explode if $var eq "croak";
-			*{$package . "::carp"}   			= \&Carp::Notify::notify if $var eq "carp";
-			*{$package . "::make_storable"}   	= \&Carp::Notify::make_storable if $var eq "make_storable";
-			*{$package . "::make_unstorable"}   = \&Carp::Notify::make_unstorable if $var eq "make_unstorable";
-		
-		};
-		
-	};
+    my %storable_vars = ();
 
-	sub store_vars {
-		my $stored_vars = "";
-		my $calling_package = (caller(1))[0];	#eek!  This may bite me in the ass.
-		
-		#foreach my $storable_var (@storable_vars){
-		foreach my $storable_var (@{$storable_vars{$calling_package}}){
-						
-			my $type = $1 if $storable_var =~ s/([\$@%&])//;
-			
-			my $package = $calling_package . "::";
-			   $package = $1 if $storable_var =~ s/(.+::)//; 
+    my @storable_vars = ();
+    my %init = ();
 
-			
-			if ($type eq '$') {
-				my $storable_val = ${$package . "$storable_var"};
-				$stored_vars .= "\t\$${package}$storable_var : $storable_val\n";next;
-			
-			}
-			elsif ($type eq '@') {
-				my @storable_val = @{$package . "$storable_var"};
-				$stored_vars .= "\t\@${package}$storable_var : (@storable_val)\n";next;
-				
-			}
-			elsif ($type eq '%') {
-				my %temp_hash = %{$package . "$storable_var"};
-				my @storable_val =  map {"\n\t\t$_ => $temp_hash{$_}"} keys %temp_hash;
-				$stored_vars .= "\t\%${package}$storable_var : @storable_val\n";next;
-			
-			}
-			elsif ($type eq '&'){
-				my $storable_val = &{$package . "$storable_var"};
-				$stored_vars .= "\t\&${package}$storable_var : $storable_val\n";next;
-			};
+    sub import {
+        my ($package, $file, $line) = caller;
+        $calling_package = $package;
 
-		};
-		
-		return $stored_vars;
-		
-	};
-	
-	sub make_storable {
-		foreach my $var (@_){
-			push @storable_vars, $var if $var =~ /^[\$@%&]/;;
-		};
-		return 1;	
-	};
-	
-	sub make_unstorable {
-		my $no_store = join("|", map {quotemeta} @_);
-		@storable_vars = grep {!/^(?:$no_store)$/} @storable_vars;
-		return 1;
-	};
-	
-	#hee hee!  Remember, a notification is just an explosion that isn't fatal.  So we use our nifty handy dandy
-	#fatal class variable to tell explode that it's not a fatal error.  explode() will set fatal back to 1 once
-	#it realizes that errors are non-fatal.  That way a future explosion will still be fatal.
-	#
-	#and then goto &explode makes perl think it just started at the explode function.  Even caller can't catch it!
-	sub notify {
-		$Carp::Notify::fatal = 0;
-		goto &explode;
-	};
+        *{$package . "::explode"} = \&Carp::Notify::explode;
+        *{$package . "::notify"} = \&Carp::Notify::notify;
 
-	sub explode {
+        while (defined (my $var = shift)){
+            if ($var eq ""){die ("Error...tried to import undefined value in $file, Line $line\n")};
 
-		my $errors = undef;
-		
-		my %init = ();
-		
-		while (defined (my $arg = shift)) {
-			if ($arg =~ /^$settables$/o){
-				$init{$arg} = shift;
-			}
-			else {$errors .= "\t$arg\n"};
-		};
+            if ($var =~ /^$settables$/o){
+                $def{$var} = shift;
+                next;
+            };
 
-		%init = (%def, %init);
+            push @storable_vars, $var if $var =~ /^[\$@%&]/;
+            push @{$storable_vars{$calling_package}}, $var if $var =~ /^[\$@%&]/;
 
-		my $stored_vars = store_vars()  if $init{'store_vars'};
-		my $stack 		= stack_trace() if $init{'stack_trace'};
-		my $environment	= store_env()   if $init{'store_env'};
-		
-		my $message = "";
-		
-		my $method = $Carp::Notify::fatal ? 'explosion' : 'notification';
-		
-		$message .= "An error via $method occurred on " . today() . "\n";
-		
-		$message .= "\n>>>>>>>>>\nERROR MESSAGES\n>>>>>>>>>\n\n$errors\n<<<<<<<<<\nEND ERROR MESSAGES\n<<<<<<<<<\n" 		if $errors;
-		$message .= "\n>>>>>>>>>\nSTORED VARIABLES\n>>>>>>>>>\n\n$stored_vars\n<<<<<<<<<\nEND STORED VARIABLES\n<<<<<<<<<\n"if $stored_vars;	
-		$message .= "\n>>>>>>>>>\nCALL STACK TRACE\n>>>>>>>>>\n\n$stack\n<<<<<<<<<\nEND CALL STACK TRACE\n<<<<<<<<<\n" 		if $init{'stack_trace'};
-		$message .= "\n>>>>>>>>>\nENVIRONMENT\n>>>>>>>>>\n\n$environment\n<<<<<<<<<\nEND ENVIRONMENT\n<<<<<<<<<\n" 			if $init{'store_env'};
-		
-		log_it(
-			"log_it"		=> $init{'log_it'},
-			"log_file"		=> $init{'log_file'},
-			
-			"log_explode"	=> $Carp::Notify::fatal   && $init{"log_explode"}	#fatal and logging explosions?
-									? $init{"log_explode"}
-									: 0,
-			"explode_log"	=> $init{'explode_log'},
+            # see if we want to overload croak or export anything while we're at it.
 
-			"log_notify"	=> ! $Carp::Notify::fatal && $init{"log_notify"}	#non-fatal and logging notifys?
-									? $init{"log_notify"}
-									: 0,
-			"notify_log"	=> $init{"notify_log"},
-			
-			"message" 		=> $message,
-			"error_function" => $init{'error_function'}
-		);
-		
-		simple_smtp_mailer(
-			"email" => $init{'email'},
-			"return" => $init{'return'},
-			"message" => $message,
-			"subject" => $init{'subject'},
-			"smtp" => $init{'smtp'},
-			"port" => $init{'port'},
-			"error_function" => $init{'error_function'}
-		) if $init{'email_it'};
-		
-		if ($Carp::Notify::fatal){
-			if ($init{'die_quietly'}){
-				exit;
-			}
-			elsif ($init{'death_function'}){
-				if (ref $init{'death_function'} eq 'CODE'){
-					$init{'death_function'}->(%init, 'errors' => $errors);
-				}
-				else {
-					no strict 'vars';
-					my ($calling_package) = (caller)[0];
-					my $package = $calling_package . "::";
-			   		$package = $1 if $init{'death_function'} =~ s/(.+::)//; 
-					$init{'death_function'} =~ s/^&//;
-					&{$package . $init{'death_function'}}(%init, 'errors' => $errors);
-					exit;
-				};
-			}
-			else {
-				if ($init{'die_to_stdout'}){
-					print STDERR $init{'death_message'} if $init{'die_everywhere'};
-					print $init{'death_message'};
-					exit;
-				}
-				else {
-					print $init{'death_message'} if $init{'die_everywhere'};
-					die $init{'death_message'};
-				};
-			};
-		}
-		else {
-			$Carp::Notify::fatal = 1;
-			return undef;
-		};
-	};
+            *{$package . "::croak"}           = \&Carp::Notify::explode if $var eq "croak";
+            *{$package . "::carp"}            = \&Carp::Notify::notify if $var eq "carp";
+            *{$package . "::make_storable"}   = \&Carp::Notify::make_storable if $var eq "make_storable";
+            *{$package . "::make_unstorable"} = \&Carp::Notify::make_unstorable if $var eq "make_unstorable";
+        };
+    };
 
-	
+    sub store_vars {
+        my $stored_vars = "";
+        my $calling_package = (caller(1))[0]; # eek!  This may bite me in the ass.
+
+        foreach my $storable_var (@{$storable_vars{$calling_package}}){
+            my $type = $1 if $storable_var =~ s/([\$@%&])//;
+
+            my $package = $calling_package . "::";
+            $package = $1 if $storable_var =~ s/(.+::)//;
+
+            if ($type eq '$') {
+                my $storable_val = ${$package . "$storable_var"};
+                $stored_vars .= "\t\$${package}$storable_var : $storable_val\n";next;
+            }
+            elsif ($type eq '@') {
+                my @storable_val = @{$package . "$storable_var"};
+                $stored_vars .= "\t\@${package}$storable_var : (@storable_val)\n";next;
+            }
+            elsif ($type eq '%') {
+                my %temp_hash = %{$package . "$storable_var"};
+                my @storable_val =  map {"\n\t\t$_ => $temp_hash{$_}"} keys %temp_hash;
+                $stored_vars .= "\t\%${package}$storable_var : @storable_val\n";next;
+            }
+            elsif ($type eq '&'){
+                my $storable_val = &{$package . "$storable_var"};
+                $stored_vars .= "\t\&${package}$storable_var : $storable_val\n";next;
+            };
+        };
+
+        return $stored_vars;
+    };
+
+    sub make_storable {
+        foreach my $var (@_){
+            push @storable_vars, $var if $var =~ /^[\$@%&]/;;
+        };
+        return 1;
+    };
+
+    sub make_unstorable {
+        my $no_store = join("|", map {quotemeta} @_);
+        @storable_vars = grep {!/^(?:$no_store)$/} @storable_vars;
+        return 1;
+    };
+
+    # hee hee!  Remember, a notification is just an explosion that isn't fatal.  So we use our nifty handy dandy
+    # fatal class variable to tell explode that it's not a fatal error.  explode() will set fatal back to 1 once
+    # it realizes that errors are non-fatal.  That way a future explosion will still be fatal.
+    #
+    # and then goto &explode makes perl think it just started at the explode function.  Even caller can't catch it!
+    sub notify {
+        $Carp::Notify::fatal = 0;
+        goto &explode;
+    };
+
+    sub explode {
+        my $errors = undef;
+
+        my %init = ();
+
+        while (defined (my $arg = shift)) {
+            if ($arg =~ /^$settables$/o){
+                $init{$arg} = shift;
+            }
+            else {$errors .= "\t$arg\n"};
+        };
+
+        %init = (%def, %init);
+
+        my $stored_vars = store_vars()  if $init{'store_vars'};
+        my $stack       = stack_trace() if $init{'stack_trace'};
+        my $environment = store_env()   if $init{'store_env'};
+
+        my $message = "";
+
+        my $method = $Carp::Notify::fatal ? 'explosion' : 'notification';
+
+        $message .= "An error via $method occurred on " . today() . "\n";
+
+        $message .= "\n>>>>>>>>>\nERROR MESSAGES\n>>>>>>>>>\n\n$errors\n<<<<<<<<<\nEND ERROR MESSAGES\n<<<<<<<<<\n"          if $errors;
+        $message .= "\n>>>>>>>>>\nSTORED VARIABLES\n>>>>>>>>>\n\n$stored_vars\n<<<<<<<<<\nEND STORED VARIABLES\n<<<<<<<<<\n" if $stored_vars;
+        $message .= "\n>>>>>>>>>\nCALL STACK TRACE\n>>>>>>>>>\n\n$stack\n<<<<<<<<<\nEND CALL STACK TRACE\n<<<<<<<<<\n"       if $init{'stack_trace'};
+        $message .= "\n>>>>>>>>>\nENVIRONMENT\n>>>>>>>>>\n\n$environment\n<<<<<<<<<\nEND ENVIRONMENT\n<<<<<<<<<\n"           if $init{'store_env'};
+
+        log_it(
+            "log_it"         => $init{'log_it'},
+            "log_file"       => $init{'log_file'},
+
+            "log_explode"    => $Carp::Notify::fatal && $init{"log_explode"} ? $init{"log_explode"} : 0,
+            "explode_log"    => $init{'explode_log'},
+
+            "log_notify"     => ! $Carp::Notify::fatal && $init{"log_notify"} ? $init{"log_notify"} : 0,
+            "notify_log"     => $init{"notify_log"},
+
+            "message"        => $message,
+            "error_function" => $init{'error_function'}
+        );
+
+        simple_smtp_mailer(
+            "email"          => $init{'email'},
+            "return"         => $init{'return'},
+            "message"        => $message,
+            "subject"        => $init{'subject'},
+            "smtp"           => $init{'smtp'},
+            "port"           => $init{'port'},
+            "error_function" => $init{'error_function'}
+        ) if $init{'email_it'};
+
+        if ($Carp::Notify::fatal){
+            if ($init{'die_quietly'}){
+                exit;
+            }
+            elsif ($init{'death_function'}){
+                if (ref $init{'death_function'} eq 'CODE'){
+                    $init{'death_function'}->(%init, 'errors' => $errors);
+                }
+                else {
+                    no strict 'vars';
+                    my ($calling_package) = (caller)[0];
+                    my $package = $calling_package . "::";
+                    $package = $1 if $init{'death_function'} =~ s/(.+::)//;
+                    $init{'death_function'} =~ s/^&//;
+                    &{$package . $init{'death_function'}}(%init, 'errors' => $errors);
+                    exit;
+                };
+            }
+            else {
+                if ($init{'die_to_stdout'}){
+                    print STDERR $init{'death_message'} if $init{'die_everywhere'};
+                    print $init{'death_message'};
+                    exit;
+                }
+                else {
+                    print $init{'death_message'} if $init{'die_everywhere'};
+                    die $init{'death_message'};
+                };
+            };
+        }
+        else {
+            $Carp::Notify::fatal = 1;
+            return undef;
+        };
+    };
 };
 
 
-#psst!  If you're looking for store_vars, it's up at the top wrapped up with import!	
+# psst!  If you're looking for store_vars, it's up at the top wrapped up with import!
 
 sub store_env {
-	my $env = '';
-	foreach (sort keys %ENV){
-		$env .= "\t$_ : $ENV{$_}\n";
-	};
-	return $env;
+    my $env = '';
+    foreach (sort keys %ENV){
+        $env .= "\t$_ : $ENV{$_}\n";
+    };
+    return $env;
 };
-	
 
 sub stack_trace {
-	my $caller_count = 1;
-	my $caller_stack = undef;
-	my @verbose_caller = ("Package: ", "Filename: ", "Line number: ", "Subroutine: ", "Has Args? : ",
-							"Want array? : ", "Evaltext: ", "Is require? : ");
-	
-	push @verbose_caller, ("Hints:  ", "Bitmask:  ") if $] >= 5.006;	#5.6 has a more verbose caller stack.
-	
-	while (my @caller = caller($caller_count++)){
-		$caller_stack .= "\t---------\n";
-		foreach (0..$#caller){
-			$caller_stack .= "\t\t$verbose_caller[$_]$caller[$_]\n" if $caller[$_];
-		};
-	};
+    my $caller_count = 1;
+    my $caller_stack = undef;
+    my @verbose_caller = ("Package: ", "Filename: ", "Line number: ", "Subroutine: ", "Has Args? : ", "Want array? : ", "Evaltext: ", "Is require? : ");
 
-	$caller_stack .= "\t---------\n";
-	return $caller_stack;
+    push @verbose_caller, ("Hints:  ", "Bitmask:  ") if $] >= 5.006; # 5.6 has a more verbose caller stack.
+
+    while (my @caller = caller($caller_count++)){
+        $caller_stack .= "\t---------\n";
+        foreach (0..$#caller){
+            $caller_stack .= "\t\t$verbose_caller[$_]$caller[$_]\n" if $caller[$_];
+        };
+    };
+
+    $caller_stack .= "\t---------\n";
+    return $caller_stack;
 };
 
 sub log_it {
-	my %init = @_;
+    my %init = @_;
 
-	my $message  = $init{message};
-	
-	local *LOG;
-	my %pairs = (
-		"log_notify"	=> "notify_log",
-		"log_explode"	=> "explode_log",
-		"log_it"		=> "log_file"
-	);
-	
-	foreach my $permission (grep {$init{$_}} keys %pairs) {	
-		my $file = $init{$pairs{$permission}};
-		if (ref $file){
-			print $file "\n__________________\n$message\n__________________\n";
-		}
-		else {
-			open (LOG, ">>$file") or error($init{'error_function'},"Cannot open log file: $!");
-			print LOG "\n__________________\n$message\n__________________\n";
-			close LOG or error($init{'error_function'},"Cannot close log file: $!");
-		};
-		
-	 };
+    my $message  = $init{message};
+
+    local *LOG;
+    my %pairs = (
+        "log_notify"  => "notify_log",
+        "log_explode" => "explode_log",
+        "log_it"      => "log_file"
+    );
+
+    foreach my $permission (grep {$init{$_}} keys %pairs) {
+        my $file = $init{$pairs{$permission}};
+        if (ref $file){
+            print $file "\n__________________\n$message\n__________________\n";
+        }
+        else {
+            open (LOG, ">>$file") or error($init{'error_function'},"Cannot open log file: $!");
+            print LOG "\n__________________\n$message\n__________________\n";
+            close LOG or error($init{'error_function'},"Cannot close log file: $!");
+        };
+    };
 };
 
 sub simple_smtp_mailer {
+    my %init = @_;
+    my $message = $init{"message"};
+    error($init{'error_function'},"Cannot email: Socket.pm could not load!") unless $Carp::Notify::can_email;
 
-	my %init = @_;
-	my $message = $init{"message"};
-	error($init{'error_function'},"Cannot email: Socket.pm could not load!") unless $Carp::Notify::can_email;
+    local *MAIL;
+    my $response = undef;
+    my ($s_tries, $c_tries) = (5, 5);
+    local $\ = "\015\012";
+    local $/ = "\015\012";
 
-	local *MAIL;
-	my $response = undef;	
-	my ($s_tries, $c_tries) = (5, 5);
-	local $\ = "\015\012";
-	local $/ = "\015\012";
+    # connect to the server
+    1 while ($s_tries-- && ! socket(MAIL, PF_INET, SOCK_STREAM, getprotobyname('tcp')));
+    return error($init{'error_function'}, "Socket error $!") if $s_tries < 0;
 
-	#connect to the server
-	1 while ($s_tries-- && ! socket(MAIL, PF_INET, SOCK_STREAM, getprotobyname('tcp')));
-	return error($init{'error_function'}, "Socket error $!") if $s_tries < 0;
-	
-	my $remote_address = inet_aton($init{'smtp'});
-	my $paddr = sockaddr_in($init{'port'}, $remote_address);
-	1 while ! connect(MAIL, $paddr) && $c_tries--;
-	return error($init{'error_function'}, "Connect error $!") if $c_tries < 0;
-	
-	#keep our bulk pipes piping hot.
-	select((select(MAIL), $| = 1)[0]);
-	#connected
+    my $remote_address = inet_aton($init{'smtp'});
+    my $paddr = sockaddr_in($init{'port'}, $remote_address);
+    1 while ! connect(MAIL, $paddr) && $c_tries--;
+    return error($init{'error_function'}, "Connect error $!") if $c_tries < 0;
 
-	#build the envelope
-	my @conversation =
-		(
-			["", "No response from server: ?"],
-			["HELO $def{'domain'}", "Mean ole' server won't say HELO: ?"],
-			["RSET", "Cannot reset connection: ?"],
-			["MAIL FROM:<$def{'return'}>", "Invalid Sender: ?"],
-			["RCPT TO:<$init{'email'}>", "Invalid Recipient: ?"],
-			["DATA", "Not ready to accept data: ?"]
-		);
+    # keep our bulk pipes piping hot.
+    select((select(MAIL), $| = 1)[0]);
+    # connected
 
-	while (my $array_ref = shift @conversation){
-		my ($i_say, $i_die) = @{$array_ref};
-		print MAIL $i_say if $i_say;
-		my $response = <MAIL> || "";
+    # build the envelope
+    my @conversation =
+        (
+            ["", "No response from server: ?"],
+            ["HELO $def{'domain'}", "Mean ole' server won't say HELO: ?"],
+            ["RSET", "Cannot reset connection: ?"],
+            ["MAIL FROM:<$def{'return'}>", "Invalid Sender: ?"],
+            ["RCPT TO:<$init{'email'}>", "Invalid Recipient: ?"],
+            ["DATA", "Not ready to accept data: ?"]
+        );
 
-		if (! $response || $response =~ /^[45]/){
-			$i_die =~ s/\?/$response/;
-			return error($init{'error_function'}, $i_die);
-		};
-		return error($init{'error_function'}, "Server disconnected: $response") if $response =~ /^221/;
+    while (my $array_ref = shift @conversation){
+        my ($i_say, $i_die) = @{$array_ref};
+        print MAIL $i_say if $i_say;
+        my $response = <MAIL> || "";
 
-	};
-	#built
-	
-	#send the data
-	print MAIL "Date: ", today();
-	print MAIL "From: $init{'return'}";
-	print MAIL "Subject: $init{'subject'}";
-	print MAIL "To: $init{'email'}";
-	print MAIL "X-Priority:2  (High)";
-	print MAIL "X-Carp-Notify: $Carp::Notify::VERSION";
-	
-	print MAIL "";	$message =~ s/^\./../gm;
-	$message =~ s/(\r?\n|\r)/\015\012/g;
-	
-	print MAIL $message;
+        if (! $response || $response =~ /^[45]/){
+            $i_die =~ s/\?/$response/;
+            return error($init{'error_function'}, $i_die);
+        };
+        return error($init{'error_function'}, "Server disconnected: $response") if $response =~ /^221/;
 
-	print MAIL ".";
-	#sent
-	
-	return 1;	#yay!
+    };
+    # built
+
+    # send the data
+    print MAIL "Date: ", today();
+    print MAIL "From: $init{'return'}";
+    print MAIL "Subject: $init{'subject'}";
+    print MAIL "To: $init{'email'}";
+    print MAIL "X-Priority:2  (High)";
+    print MAIL "X-Carp-Notify: $Carp::Notify::VERSION";
+
+    print MAIL "";
+
+    $message =~ s/^\./../gm;
+    $message =~ s/(\r?\n|\r)/\015\012/g;
+
+    print MAIL $message;
+
+    print MAIL ".";
+    # sent
+
+    return 1; # yay!
 };
 
 sub today {
+    my @months = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
+    my @days   = qw(Sun Mon Tue Wed Thu Fri Sat);
 
-	my @months 	= qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
-	my @days 	= qw(Sun Mon Tue Wed Thu Fri Sat);
+    my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+    $year += 1900;
+    my ($gmin, $ghour, $gsdst) = (gmtime(time))[1,2, -1];
 
-	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
-	$year += 1900;
-	my ($gmin, $ghour, $gsdst) = (gmtime(time))[1,2, -1];
-	
-	my $diffhour = $hour - $ghour;
-	$diffhour = 12 - $diffhour if $diffhour > 12;
-	$diffhour = 12 + $diffhour if $diffhour < -12;
+    my $diffhour = $hour - $ghour;
+    $diffhour = 12 - $diffhour if $diffhour > 12;
+    $diffhour = 12 + $diffhour if $diffhour < -12;
 
-	($diffhour = sprintf("%03d", $diffhour)) =~ s/^0/\+/;
-	
-	return sprintf("%s, %02d %s %04d %02d:%02d:%02d %05s",
-		$days[$wday], $mday, $months[$mon], $year + 1900, $hour, $min, $sec, $diffhour . sprintf("%02d", $min - $gmin));
+    ($diffhour = sprintf("%03d", $diffhour)) =~ s/^0/\+/;
+
+    return sprintf("%s, %02d %s %04d %02d:%02d:%02d %05s",
+        $days[$wday], $mday, $months[$mon], $year + 1900, $hour, $min, $sec, $diffhour . sprintf("%02d", $min - $gmin));
 };
 
-#error does nothing unless you specify the error_function, in that case it's called with the error provided.
+# error does nothing unless you specify the error_function, in that case it's called with the error provided.
 sub error {
-	my ($func, $error) = @_;
-	if (ref $func eq 'CODE'){
-		$func->($error);
-	}
-	elsif ($func){
-		no strict 'refs';
-		my $calling_package = (caller(2))[0];	#eek!  This may bite me in the ass.
+    my ($func, $error) = @_;
+    if (ref $func eq 'CODE'){
+        $func->($error);
+    }
+    elsif ($func){
+        no strict 'refs';
+        my $calling_package = (caller(2))[0]; # eek!  This may bite me in the ass.
 
-		my ($calling_package) = (caller)[0];
-		my $package = $calling_package . "::";
-		$package = $1 if $$func =~ s/(.+::)//;
-		&{$package . $func}($error);
-	}
-	else {undef};
+        my ($calling_package) = (caller)[0];
+        my $package = $calling_package . "::";
+        $package = $1 if $$func =~ s/(.+::)//;
+        &{$package . $func}($error);
+    }
+    else {undef};
 };
 
 
@@ -442,17 +423,19 @@ Carp::Notify - Loudly complain in lots of places when things break badly
 
 Jim Thomason thomasoniii@yahoo.com
 
+Brian Conry perl@theconrys.com
+
 =head1 SYNOPSIS
 
 Use it in place of die or croak, or warn or carp.
 
- #with Carp;
+ # with Carp;
  use Carp;
  if ($something_a_little_bad) { carp("Oh no, a minor error!")};
  if ($something_bad) { croak ("Oh no an error!")};
 
 
- #with Carp::Notify;
+ # with Carp::Notify;
  use Carp::Notify;
  if (something_a_little_bad) {notify("Oh no, a minor error!")};
  if ($something_bad) { explode ("Oh no an error!")};
@@ -464,7 +447,7 @@ Perl 5.005, Socket (for emailing)
 =head1 DESCRIPTION
 
 Carp::Notify is an error reporting module designed for applications that are running unsupervised (a CGI script, for example,
-or a cron job).  If a program has an explosion, it terminates (same as die or croak or exit, depending on preference) and 
+or a cron job).  If a program has an explosion, it terminates (same as die or croak or exit, depending on preference) and
 then emails someone with useful information about what caused the problem.  Said information can also be logged to a file.
 If you want the program to tell you something about an error that's non fatal (disk size approaching full, but not quite
 there, for example), then you can have it notify you of the error but not terminate the program.
@@ -529,9 +512,9 @@ you can switch all of your carps to notifies by just changing which module you u
 Example:
 
  use Carp::Notify (
- 	"log_it" => 1,
- 	"email_it => 0,
- 	"email" => 'thomasoniii@yahoo.com'
+        "log_it" => 1,
+        "email_it => 0,
+        "email" => 'thomasoniii@yahoo.com'
  );
 
 These are hash keys that allow you to override the Carp::Notify's module defaults.  These can also all be overloaded explicitly
@@ -770,12 +753,12 @@ the explosion occurs.  Carp::Notify will report an error if you try to store a v
 typed something in single quotes, for instance.  For example,
 
  use Carp::Notify ('$scalar', '@array');
- 
+
  $scalar = "some_value";
  @array = qw(val1 val2 val3);
- 
+
  explode("An error!");
- 
+
 will write out the values "$scalar : some_value" and "@array : val1 val2 val3" to the log file.
 
 This can B<only> be used to store global variables. Dynamic or lexical variables need to be explicitly placed in explode() calls.
@@ -819,18 +802,18 @@ not gonna use this function, after all).
 You can override your default values here (see I<Using the module above>), if you'd like, and otherwise specify as many error messages
 as you'd like to show up in your logs.
 
- #override who the mail's going to, and the log file.
+ # override who the mail's going to, and the log file.
  explode("email" => "thomasoniii@yahoo.com", log_file => "/home/jim/jim_explosions.log", "A terrible error: $!");
 
- #Same thing, but with a globref to the same file
+ # Same thing, but with a globref to the same file
  open (LOG, ">>/home/jim/jim_explosions.log");
  explode("email" => "thomasoniii@yahoo.com", log_file => \*LOG, "A terrible error: $!");
 
 
- #don't log.
+ # don't log.
  explode ("log_it" => 0, "A terrible error: $!");
- 
- #keep the defaults
+
+ # keep the defaults
  explode("A terrible error: $!", "And DBI said:  $DBI::errstr");
 
 =back
@@ -882,7 +865,7 @@ wouldn't have thought of it.  Besides, it's still more of a hassle than just usi
 
 B<Why are your stored variables kept in an array instead of a hash?  Hashes are quicker to delete from, after all>
 
-While it is definitely true that variables can be unstored a little quicker in a hash, I figured that stored variables 
+While it is definitely true that variables can be unstored a little quicker in a hash, I figured that stored variables
 will only rarely be unstored later.  Arrays are quicker for storing and accessing the items later, since they're only accessed en masse.
 I'll live with the slight performance hit for the rarer case.
 
@@ -917,25 +900,25 @@ Why yes, yes it was.
 
 =head1 Examples
 
- #store $data, do email the errors, and alias croak => explode
+ # store $data, do email the errors, and alias croak => explode
  use Carp::Notify ('$data', 'email_it' => 1, "croak");
 
- #email it to a different address, and don't log it.
+ # email it to a different address, and don't log it.
  use Carp::Notify ("email" => 'thomasoniii@yahoo.com', 'log_it' => 0);
 
- #don't use global log file, log explosions and notifys separately.
+ # don't use global log file, log explosions and notifys separately.
  use Carp::Notify ('log_it' => 0, 'log_explode' => 1, 'log_notify => 1);
 
- #die with an explosion.
+ # die with an explosion.
  explode("Ye gods!  An error!");
- 
- #die with an explosion and a different email subject.
+
+ # die with an explosion and a different email subject.
  explode ('subject' => "HOLY SHIT THIS IS BAD!", "The reactor core breached.");
- 
- #explode, but do it quietly.
+
+ # explode, but do it quietly.
  explode ("die_quietly" => 1, "Ye gods!  An error!");
- 
- #notify someone of a problem, but keep the program running
+
+ # notify someone of a problem, but keep the program running
  notify ("Ye gods!  A little error!");
 
 
@@ -943,25 +926,25 @@ Why yes, yes it was.
 
 =over 11
 
-v1.10 - April 13, 2001 - 
+v1.10 - April 13, 2001 -
 
 * Long overdue re-write/enhancements.
-		
+
 * Cleaned up the internals.
-		
+
 * Added support for different log files for notifys/explodes.
-		
+
 * Added support for changing all the defaults externally.
 
 * Improved today() function with Mail::Bulkmail's date generation.
-		
+
 * Added death_function to call upon dying instead of death_message.
-		
+
 * Added error_function to help handle unforeseen problems.
 
 * Perl 5.6's 'caller' function returns an extra two fields of information.  Jeff Boes pointed this
 out and extra-helpfully provided a patch for it as well.
-                
+
 * Added the ability to config the SMTP port.  I was just being lazy in v1.00.  :*)
 
 v1.00 - August 10, 2000 - Changed the name from Explode to Carp::Notify.  It's more descriptive and I don't create a new namespace.
