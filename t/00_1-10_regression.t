@@ -1,6 +1,6 @@
 #########################
 
-use Test::More tests => 65;
+use Test::More tests => 71;
 
 #########################
 
@@ -51,7 +51,8 @@ use Test::More tests => 65;
 
     # this shows what the module should be doing
     TODO: {
-        local $TODO = 'preserving backwards compatibility... for now';
+        local $TODO;
+        $TODO = 'preserving backwards compatibility... for now';
 
         ::is_deeply(
             \%symtable,
@@ -97,7 +98,8 @@ use Test::More tests => 65;
 
     # this shows what the module should be doing
     TODO: {
-        local $TODO = 'preserving backwards compatibility... for now';
+        local $TODO;
+        $TODO = 'preserving backwards compatibility... for now';
 
         ::is_deeply(
             \%symtable,
@@ -151,7 +153,8 @@ use Test::More tests => 65;
 
     # this shows what the module should be doing
     TODO: {
-        local $TODO = 'preserving backwards compatibility... for now';
+        local $TODO;
+        $TODO = 'preserving backwards compatibility... for now';
 
         ::is_deeply(
             \%symtable,
@@ -205,7 +208,8 @@ use Test::More tests => 65;
 
     # this shows what the module should be doing
     TODO: {
-        local $TODO = 'preserving backwards compatibility... for now';
+        local $TODO;
+        $TODO = 'preserving backwards compatibility... for now';
 
         ::is_deeply(
             \%symtable,
@@ -259,7 +263,8 @@ use Test::More tests => 65;
 
     # this shows what the module should be doing
     TODO: {
-        local $TODO = 'preserving backwards compatibility... for now';
+        local $TODO;
+        $TODO = 'preserving backwards compatibility... for now';
 
         ::is_deeply(
             \%symtable,
@@ -313,7 +318,8 @@ use Test::More tests => 65;
 
     # this shows what the module should be doing
     TODO: {
-        local $TODO = 'preserving backwards compatibility... for now';
+        local $TODO;
+        $TODO = 'preserving backwards compatibility... for now';
 
         ::is_deeply(
             \%symtable,
@@ -508,6 +514,34 @@ use Test::More tests => 65;
 
     ::ok( $store_return, 'store_vars returned a value' );
 
+    # if it worked properly...
+    TODO: {
+        local $TODO;
+        $TODO = 'preserving backwards compatibility... for now';
+
+        ::like(
+            $store_return,
+            qr/\$t::Carp::Notify::i::var_2 : contents of \$var_2/,
+            'store_vars returns $var_2 contents'
+        );
+        ::like(
+            $store_return,
+            qr/\@t::Carp::Notify::i::var_2 : \(contents of \@var_2\)/,
+            'store_vars returns @var_2 contents'
+        );
+        ::like(
+            $store_return,
+            qr/\%t::Carp::Notify::i::var_2 :\s+contents => of\s+\%var_2 => value/s,
+            'store_vars returns %var_2 contents'
+        );
+        ::like(
+            $store_return,
+            qr/\&t::Carp::Notify::i::func_2 : func_2 return value/,
+            'store_vars returns &func_2 return value'
+        );
+    }
+
+    # v1.10 broken behavior
     ::like(
         $store_return,
         qr/\$t::Carp::Notify::i::var_1 : contents of \$var_1/,
@@ -570,31 +604,25 @@ use Test::More tests => 65;
         ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst)
             = ($sec1, $min1, $hour1, $mday1, $mon1, $year1, $wday1, $yday1, $isdst1);
     }
-    elsif( $min1 == $c_n_min ) {
-        # a minute boundary wrap is necessary before any other boundaries can
-        # wrap, so if the minute didn't wrap then we're good with the first
-        # set of captured time information
+    elsif( $sec1 == $c_n_ss ) {
         ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst)
             = ($sec1, $min1, $hour1, $mday1, $mon1, $year1, $wday1, $yday1, $isdst1);
     }
-    elsif( $min2 == $c_n_min ) {
-        # a minute boundary wrap is necessary before any other boundaries can
-        # wrap, so if the minute didn't wrap then we're good with the second
-        # set of captured time information
+    elsif( $sec2 == $c_n_ss ) {
         ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst)
             = ($sec2, $min2, $hour2, $mday2, $mon2, $year2, $wday2, $yday2, $isdst2);
     }
     else {
         # this must be a REALLY slow system for BOTH of my localtime data
-        # captures to be in different minutes than the time that
+        # captures to be in different seconds than the time that
         # Carp::Notify::today used...
         # OR maybe there's just something odd going on with the system clock.
         $time_check_skip = 1;
     }
 
     SKIP: {
-        ::skip 'System time moving too fast', 6 if $time_check_skip;
-        # don't bother checking the seconds...
+        ::skip 'System time moving too fast', 8 if $time_check_skip;
+        ::cmp_ok( $sec, '==', $c_n_ss, 'Carp::Notify::today, seconds match' );
         ::cmp_ok( $min, '==', $c_n_mm, 'Carp::Notify::today, minutes match' );
         ::cmp_ok( $hour, '==', $c_n_hh, 'Carp::Notify::today, hours match' );
         ::cmp_ok( $mday, '==', $c_n_mday, 'Carp::Notify::today, mday matches' );
@@ -607,12 +635,28 @@ use Test::More tests => 65;
             }->{$c_n_mon},
             'Carp::Notify::today, month matches',
         );
+
+        # correct year calculation
+        TODO: {
+            local $TODO;
+            $TODO = 'preserving backwards compatibility... for now';
+
+            ::cmp_ok(
+                $year,
+                '==',
+                ( $c_n_yr - 1900 ),
+                'Carp::Notify::today, year matches',
+            );
+        }
+
+        # broken year calculation for backwards compatability
         ::cmp_ok(
             $year,
             '==',
             ( $c_n_yr - 1900 - 1900 ),
             'Carp::Notify::today, year matches (with 1900 extra years)',
         );
+
         ::is(
             $wday,
             {
@@ -624,7 +668,7 @@ use Test::More tests => 65;
     }
 
     SKIP: {
-        ::skip 'GMT offset checking not practical', 1 if 1;
+        ::skip 'GMT offset checking not (yet) implemented', 1 if 1;
     }
 }
 
