@@ -100,7 +100,7 @@ BEGIN {
 
     sub store_vars {
         my $stored_vars = "";
-        my $calling_package = (caller(1))[0]; # eek!  This may bite me in the ass.
+        my $calling_package = (caller(1))[0]; # eek!  This may not always work
 
         foreach my $storable_var (@{$storable_vars{$calling_package}}){
             my $type = $1 if $storable_var =~ s/([\$@%&])//;
@@ -422,6 +422,14 @@ Use it in place of die or croak, or warn or carp.
  use Carp::Notify;
  if (something_a_little_bad) {notify("Oh no, a minor error!")};
  if ($something_bad) { explode ("Oh no an error!")};
+
+=head1 IMPORTANT NOTE
+
+This version is nearly identical to, and I<is> bug-for-bug compatible with, version 1.10 which has been on CPAN
+for years but has not been indexed.
+
+This public release is intended to catch the attention of anyone actually using this module and let them know
+that changes are coming!
 
 =head1 DESCRIPTION
 
@@ -870,10 +878,23 @@ Not in the use statement, but you can in an explicit explode.
 
 B<Are there any bugs I should be aware of?>
 
-Only if you're annoying.  If you import explode into your package, then subclass it and export explode back out it won't correctly
+If you import explode into your package, then subclass it and export explode back out it won't correctly
 pick up your stored variables unless you fully qualified them with the class path ($package::variable instead of just $variable)
 
-Solution?  Don't re-export Carp::Notify.  But you already knew that you should juse re-use it in your subclass, right?
+Solution?  Don't re-export Carp::Notify.  But you already knew that you should just re-use it in your subclass, right?
+
+Always exports explode and notify no matter what is specified in the use statement. This is according to the original design but contrary to
+current conventions and is now considered to be a bug.
+
+make_storable and make_unstorable don't scope the variables they store/unstore by the calling package, which means
+that they don't affect the results of store_vars.
+
+store_vars destroys the contents of the stored variables, making multiple notifications from the same package not work well.
+
+store_vars doesn't gracefully handle being called directly from the main script (i.e. it expects there to be at least one other function
+in the call stack).
+
+today returns a year 1900 too high.  See L<https://rt.cpan.org/Ticket/Display.html?id=8124>.
 
 B<Could I see some more examples?>
 
