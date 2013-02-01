@@ -1,6 +1,6 @@
 #########################
 
-use Test::More tests => 71;
+use Test::More tests => 76;
 
 #########################
 
@@ -446,9 +446,35 @@ use Test::More tests => 71;
     );
 
     # store_vars modifies the list of "stored" variables to make them
-    # unsuitable for repeated calls to store_vars, this may be considered
-    # to be a bug in the future
+    # unsuitable for repeated calls to store_vars, this will be
+    # considered to be a bug in the future
     $store_return = get_store_vars();
+
+    TODO: {
+        local $TODO;
+        $TODO = 'preserving backwards compatibility... for now';
+
+        ::like(
+            $store_return,
+            qr/\$t::Carp::Notify::h::var_1 : contents of \$var_1/,
+            'store_vars returns $var_1 contents'
+        );
+        ::like(
+            $store_return,
+            qr/\@t::Carp::Notify::h::var_1 : \(contents of \@var_1\)/,
+            'store_vars returns @var_1 contents'
+        );
+        ::like(
+            $store_return,
+            qr/\%t::Carp::Notify::h::var_1 :\s+contents => of\s+\%var_1 => value/s,
+            'store_vars returns %var_1 contents'
+        );
+        ::like(
+            $store_return,
+            qr/\&t::Carp::Notify::h::func_1 : func_1 return value/,
+            'store_vars returns &func_1 return value'
+        );
+    }
 
     ::is( $store_return, '' );
 }
@@ -673,29 +699,70 @@ use Test::More tests => 71;
 }
 
 # setting defaults on use
+#   there isn't a clean way to test this, as they are stuffed into
+#   a lexical and not directly exposed by any functions
+# "settables" are:
+#   smtp
+#   domain
+#   port
+#   email_it
+#   email
+#   return
+#   subject
+#   log_it
+#   log_file
+#   log_explode
+#   explode_log
+#   log_notify
+#   notify_log
+#   store_vars
+#   stack_trace
+#   store_env
+#   die_to_stdout
+#   die_everywhere
+#   die_quietly
+#   error_function
+#   death_function
+#   death_message
 
 # store_env
+{
+    # this seems a bit silly to test as it's completely reimplementing the current code...
+
+    my $c_n_env_str = Carp::Notify::store_env();
+
+    my $env_str = join(
+        '',
+        map {
+            "\t$_ : $ENV{$_}\n"
+        }
+        sort keys %ENV
+    );
+
+    ::is(
+        $c_n_env_str,
+        $env_str,
+        'Carp::Notify::store_env returned the expected string',
+    )
+}
 
 # stack_trace
+# this seems non-trivial to test properly; lots of string building
 
 # log_it
+# this writes to the filesystem (filename overridable on use)
+# also supports
 
 # simple_smtp_mailer
+# this connects to port 25 on some server...
 
 # error
+# this invokes the first arg as a callback, even allowing soft refs
 
 # notify/explode
+# notify is implemented as a non-fatal explode
+# explode expects to send mail, etc depending on defaults
+
 # email_it
-# log_it (log_file,explode_log,notify_log)
-# log_explode
-# log_notify
-# store_vars
-# stack_trace
-# store_env
-# die_to_stdout
-# die_to_everywhere
-# die_quietly
-# error_function
-# death_function
-# death_message
+# send email, not easy to test
 
