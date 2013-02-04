@@ -1,6 +1,6 @@
 #########################
 
-use Test::More tests => 76;
+use Test::More tests => 75;
 
 #########################
 
@@ -436,7 +436,7 @@ use Test::More tests => 76;
     );
     ::like(
         $store_return,
-        qr/\%t::Carp::Notify::h::var_1 :\s+contents => of\s+\%var_1 => value/s,
+        qr/\%t::Carp::Notify::h::var_1 :\s+(contents => of\s+\%var_1 => value|\%var_1 => value\s+contents => of)/s,
         'store_vars returns %var_1 contents'
     );
     ::like(
@@ -466,7 +466,7 @@ use Test::More tests => 76;
         );
         ::like(
             $store_return,
-            qr/\%t::Carp::Notify::h::var_1 :\s+contents => of\s+\%var_1 => value/s,
+            qr/\%t::Carp::Notify::h::var_1 :\s+(contents => of\s+\%var_1 => value|\%var_1 => value\s+contents => of)/s,
             'store_vars returns %var_1 contents'
         );
         ::like(
@@ -557,7 +557,7 @@ use Test::More tests => 76;
         );
         ::like(
             $store_return,
-            qr/\%t::Carp::Notify::i::var_2 :\s+contents => of\s+\%var_2 => value/s,
+            qr/\%t::Carp::Notify::i::var_2 :\s+(contents => of\s+\%var_2 => value|\%var_2 => value\s+contents => of)/s,
             'store_vars returns %var_2 contents'
         );
         ::like(
@@ -580,7 +580,7 @@ use Test::More tests => 76;
     );
     ::like(
         $store_return,
-        qr/\%t::Carp::Notify::i::var_1 :\s+contents => of\s+\%var_1 => value/s,
+        qr/\%t::Carp::Notify::i::var_1 :\s+(contents => of\s+\%var_1 => value|\%var_1 => value\s+contents => of)/s,
         'store_vars STILL returns %var_1 contents'
     );
     ::like(
@@ -663,24 +663,11 @@ use Test::More tests => 76;
         );
 
         # correct year calculation
-        TODO: {
-            local $TODO;
-            $TODO = 'preserving backwards compatibility... for now';
-
-            ::cmp_ok(
-                $year,
-                '==',
-                ( $c_n_yr - 1900 ),
-                'Carp::Notify::today, year matches',
-            );
-        }
-
-        # broken year calculation for backwards compatability
         ::cmp_ok(
             $year,
             '==',
-            ( $c_n_yr - 1900 - 1900 ),
-            'Carp::Notify::today, year matches (with 1900 extra years)',
+            $c_n_yr - 1900,
+            'Carp::Notify::today, year matches',
         );
 
         ::is(

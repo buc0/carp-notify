@@ -1,10 +1,10 @@
 package Carp::Notify;
 
-# ABSTRACT: Loudly complain in lots of places when things break badly
-
 use 5.005; # probably lower, but I haven't tested it below 005
 use strict;
-local $^W = 1;
+use warnings;
+
+# ABSTRACT: Loudly complain in lots of places when things break badly
 
 my %def = (
     "smtp"   => 'your.smtp.com', # IMPORTANT!  Set this!  I mean it!
@@ -53,7 +53,7 @@ eoE
 
 my $settables = "(?:" . join('|', keys %def) . ')';
 
-BEGIN {
+BEGIN { # Socket should be part of core...
     $Carp::Notify::can_email = 1;
     eval "use Socket";
     $Carp::Notify::can_email = 0 if $@;
@@ -103,7 +103,8 @@ BEGIN {
         my $calling_package = (caller(1))[0]; # eek!  This may not always work
 
         foreach my $storable_var (@{$storable_vars{$calling_package}}){
-            my $type = $1 if $storable_var =~ s/([\$@%&])//;
+            my $type = '';
+            $type = $1 if $storable_var =~ s/([\$@%&])//;
 
             my $package = $calling_package . "::";
             $package = $1 if $storable_var =~ s/(.+::)//;
@@ -167,9 +168,11 @@ BEGIN {
 
         %init = (%def, %init);
 
-        my $stored_vars = store_vars()  if $init{'store_vars'};
-        my $stack       = stack_trace() if $init{'stack_trace'};
-        my $environment = store_env()   if $init{'store_env'};
+        my( $stored_vars, $stack, $environment ) = ( '', '', '' );
+
+        $stored_vars = store_vars()  if $init{'store_vars'};
+        $stack       = stack_trace() if $init{'stack_trace'};
+        $environment = store_env()   if $init{'store_env'};
 
         my $message = "";
 
@@ -238,7 +241,7 @@ BEGIN {
         }
         else {
             $Carp::Notify::fatal = 1;
-            return undef;
+            return;
         };
     };
 };
@@ -382,7 +385,7 @@ sub today {
     ($diffhour = sprintf("%03d", $diffhour)) =~ s/^0/\+/;
 
     return sprintf("%s, %02d %s %04d %02d:%02d:%02d %05s",
-        $days[$wday], $mday, $months[$mon], $year + 1900, $hour, $min, $sec, $diffhour . sprintf("%02d", $min - $gmin));
+        $days[$wday], $mday, $months[$mon], $year, $hour, $min, $sec, $diffhour . sprintf("%02d", $min - $gmin));
 };
 
 # error does nothing unless you specify the error_function, in that case it's called with the error provided.
@@ -398,7 +401,9 @@ sub error {
         $package = $1 if $$func =~ s/(.+::)//;
         &{$package . $func}($error);
     }
-    else {undef};
+    else {
+        return;
+    };
 };
 
 
@@ -894,7 +899,11 @@ store_vars destroys the contents of the stored variables, making multiple notifi
 store_vars doesn't gracefully handle being called directly from the main script (i.e. it expects there to be at least one other function
 in the call stack).
 
-today returns a year 1900 too high.  See L<https://rt.cpan.org/Ticket/Display.html?id=8124>.
+The internal function today doesn't always report GMT offsets for some timezones that don't use whole hours
+(e.g. Indian/Cocos aka CCT, which is sometimes reported as +07-30 instead of +0630).
+
+The internal function today has an edge condition where the GMT offset could report one additional or one less
+minute of offset (rare).
 
 B<Could I see some more examples?>
 
