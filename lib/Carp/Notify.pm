@@ -1,8 +1,8 @@
-package Carp::Notify;
-
-use 5.005; # probably lower, but I haven't tested it below 005
+use 5.005;
 use strict;
 use warnings;
+
+package Carp::Notify;
 
 # ABSTRACT: Loudly complain in lots of places when things break badly
 
@@ -53,17 +53,9 @@ eoE
 
 my $settables = "(?:" . join('|', keys %def) . ')';
 
-BEGIN { # Socket should be part of core...
-    $Carp::Notify::can_email = 1;
-    eval "use Socket";
-    $Carp::Notify::can_email = 0 if $@;
-
-    $Carp::Notify::fatal = 1; # doesn't really belong here, but it's the cleanest place to put it...
-};
-
+$Carp::Notify::fatal = 1;
 
 {
-    no strict 'refs';
     my $calling_package = undef;
 
     my %storable_vars = ();
@@ -72,6 +64,8 @@ BEGIN { # Socket should be part of core...
     my %init = ();
 
     sub import {
+        # this wants rework, badly
+        no strict 'refs';
         my ($package, $file, $line) = caller;
         $calling_package = $package;
 
@@ -99,6 +93,9 @@ BEGIN { # Socket should be part of core...
     };
 
     sub store_vars {
+        # this wants rework
+        no strict 'refs';
+
         my $stored_vars = "";
         my $calling_package = (caller(1))[0]; # eek!  This may not always work
 
@@ -218,6 +215,7 @@ BEGIN { # Socket should be part of core...
                     $init{'death_function'}->(%init, 'errors' => $errors);
                 }
                 else {
+                    # this wants rework, badly
                     no strict 'vars';
                     my ($calling_package) = (caller)[0];
                     my $package = $calling_package . "::";
@@ -281,6 +279,7 @@ sub log_it {
     my $message  = $init{message};
 
     local *LOG;
+
     my %pairs = (
         "log_notify"  => "notify_log",
         "log_explode" => "explode_log",
@@ -303,7 +302,8 @@ sub log_it {
 sub simple_smtp_mailer {
     my %init = @_;
     my $message = $init{"message"};
-    error($init{'error_function'},"Cannot email: Socket.pm could not load!") unless $Carp::Notify::can_email;
+
+    use Socket;
 
     local *MAIL;
     my $response = undef;
@@ -395,6 +395,7 @@ sub error {
         $func->($error);
     }
     elsif ($func){
+        # this wants reworked
         no strict 'refs';
         my ($calling_package) = (caller)[0];
         my $package = $calling_package . "::";
@@ -827,6 +828,24 @@ way that an explode would.
 
 =back
 
+=head1 Internal functions
+
+=over 11
+
+=item error
+
+Used to proxy to the registered error_function, if any.
+
+=item today
+
+Used to for standard formatting of the date.
+
+=item simple_smtp_mailer
+
+Used to speak to an SMTP server.
+
+=back
+
 =head1 FAQ
 
 B<So what's the point of this thing?>
@@ -943,6 +962,20 @@ Why yes, yes it was.
 =head1 Version History
 
 =over 11
+
+v1.12 - Mar 31, 2016 -
+
+* Fix tests relying on hash ordering
+
+* fix double adding of 1900 to year in calculations
+
+* minor cleanups for Test::Perl::Critic and Test::Pod::Coverage
+
+* eliminate conditional 'my' statements
+
+v1.11 - Feb 1, 2013 -
+
+* Updated documentation and maintainership.
 
 v1.10 - April 13, 2001 -
 

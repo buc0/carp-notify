@@ -7,6 +7,8 @@ Revision history for Perl extension Carp::Notify.
         - fix doubled adding of 1900 to the year
         - document some additional known edge cases (bugs)
         - removed 'test.pl'
+        - made loading of Socket required
+        - minor changes to address Perl::Critic criticisms
 
 1.11  2013-02-01
         - Maintainership changed to Brian Conry
