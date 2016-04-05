@@ -1,9 +1,14 @@
 Revision history for Perl extension Carp::Notify.
 
+1.13  2016-04-05
+        - Gratuitous version bump because the author botched an upload of
+          Carp-Notify-1.12.tar.gz and CPAN doesn't allow an upload name to be
+          reused (for understandable reasons)
+
 1.12  2016-03-31
         - Fix tests relying on hash ordering
         - change to 'use warnings' instead of messing with $^W
-        - elminate conditional 'my' statements
+        - eliminate conditional 'my' statements
         - fix doubled adding of 1900 to the year
         - document some additional known edge cases (bugs)
         - removed 'test.pl'
